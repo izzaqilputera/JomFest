@@ -1,0 +1,13 @@
+{
+  "name": "jomfest-seeder",
+  "version": "1.0.0",
+  "description": "Bulk-seed demo events into the JomFest Firestore database.",
+  "private": true,
+  "scripts": {
+    "seed": "node seed.js",
+    "clear": "node seed.js --clear"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}
