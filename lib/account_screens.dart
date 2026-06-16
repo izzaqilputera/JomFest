@@ -281,8 +281,49 @@ class SavedEventsScreen extends StatelessWidget {
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
+  static String _daysLabel(String? dateStr) {
+    if (dateStr == null) return '';
+    final parts = dateStr.split('/');
+    if (parts.length != 3) return '';
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) return '';
+    final eventDate = DateTime(year, month, day);
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final diff = eventDate.difference(today).inDays;
+    if (diff < 0) return 'Event passed';
+    if (diff == 0) return 'Today!';
+    if (diff == 1) return 'Tomorrow!';
+    return 'In $diff days';
+  }
+
+  Future<void> _clear(String uid, String ticketId) async {
+    await FirebaseFirestore.instance
+        .collection('clearedNotifications')
+        .doc('${uid}_$ticketId')
+        .set({
+      'uid': uid,
+      'ticketId': ticketId,
+      'clearedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _clearAll(String uid, List<String> ticketIds) async {
+    final batch = FirebaseFirestore.instance.batch();
+    for (final id in ticketIds) {
+      batch.set(
+        FirebaseFirestore.instance.collection('clearedNotifications').doc('${uid}_$id'),
+        {'uid': uid, 'ticketId': id, 'clearedAt': FieldValue.serverTimestamp()},
+      );
+    }
+    await batch.commit();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
@@ -297,33 +338,251 @@ class NotificationsScreen extends StatelessWidget {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.notifications_outlined,
-                  size: 60, color: AppColors.grey600),
-              const SizedBox(height: 16),
-              const Text(
-                'No notifications',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Event updates and reminders will appear here.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.grey),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: uid == null
+          ? const Center(
+              child: Text('Please log in to view notifications',
+                  style: TextStyle(color: AppColors.grey)),
+            )
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('clearedNotifications')
+                  .where('uid', isEqualTo: uid)
+                  .snapshots(),
+              builder: (context, clearedSnap) {
+                final clearedIds = clearedSnap.data?.docs
+                        .map((d) => (d.data() as Map<String, dynamic>)['ticketId'] as String?)
+                        .whereType<String>()
+                        .toSet() ??
+                    <String>{};
+
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('tickets')
+                      .where('uid', isEqualTo: uid)
+                      .where('status', isEqualTo: 'confirmed')
+                      .snapshots(),
+                  builder: (context, ticketsSnap) {
+                    if (ticketsSnap.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                          child: CircularProgressIndicator(color: AppColors.primary));
+                    }
+
+                    final visible = (ticketsSnap.data?.docs ?? [])
+                        .where((d) => !clearedIds.contains(d.id))
+                        .toList();
+
+                    if (visible.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.notifications_outlined,
+                                  size: 60, color: AppColors.grey600),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'No notifications',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Event updates and reminders will appear here.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    final visibleIds = visible.map((d) => d.id).toList();
+
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${visible.length} reminder${visible.length == 1 ? '' : 's'}',
+                                style: const TextStyle(
+                                    fontSize: 13, color: AppColors.grey),
+                              ),
+                              TextButton(
+                                onPressed: () => _clearAll(uid, visibleIds),
+                                child: const Text(
+                                  'Clear all',
+                                  style: TextStyle(
+                                      fontSize: 13, color: AppColors.grey),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                            itemCount: visible.length,
+                            itemBuilder: (context, index) {
+                              final doc = visible[index];
+                              final ticket = doc.data() as Map<String, dynamic>;
+                              final ticketId = doc.id;
+                              final eventTitle =
+                                  ticket['eventTitle'] as String? ?? 'Event';
+                              final eventDate = ticket['eventDate'] as String?;
+                              final venue = ticket['venue'] as String? ?? '';
+                              final label = _daysLabel(eventDate);
+                              final isPassed = label == 'Event passed';
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF161616),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.divider),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: isPassed
+                                            ? AppColors.grey.withValues(alpha: 0.12)
+                                            : AppColors.primary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        isPassed
+                                            ? Icons.event_available_rounded
+                                            : Icons.event_rounded,
+                                        color: isPassed
+                                            ? AppColors.grey
+                                            : AppColors.primary,
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isPassed
+                                                ? 'Past Event'
+                                                : 'Upcoming Event Reminder',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: isPassed
+                                                  ? AppColors.grey
+                                                  : AppColors.primary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            eventTitle,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          if (eventDate != null) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                    Icons.calendar_today_outlined,
+                                                    size: 11,
+                                                    color: AppColors.grey),
+                                                const SizedBox(width: 4),
+                                                Text(eventDate,
+                                                    style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: AppColors.grey)),
+                                                if (label.isNotEmpty) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                        horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: isPassed
+                                                          ? AppColors.grey.withValues(alpha: 0.12)
+                                                          : AppColors.primarySurface,
+                                                      borderRadius:
+                                                          BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      label,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: isPassed
+                                                            ? AppColors.grey
+                                                            : AppColors.primary,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ],
+                                          if (venue.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                    Icons.location_on_outlined,
+                                                    size: 11,
+                                                    color: AppColors.grey),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    venue,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: AppColors.grey),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _clear(uid, ticketId),
+                                      icon: const Icon(Icons.close_rounded,
+                                          size: 18, color: AppColors.grey),
+                                      tooltip: 'Clear',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                          minWidth: 32, minHeight: 32),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 }
