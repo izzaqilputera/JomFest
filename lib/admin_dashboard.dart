@@ -956,11 +956,14 @@ class _OrganizersPageState extends State<_OrganizersPage>
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8),
               ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorPadding: const EdgeInsets.all(4),
               labelColor: Colors.white,
               unselectedLabelColor: AppColors.grey,
               labelStyle: const TextStyle(
                   fontSize: 13, fontWeight: FontWeight.w600),
               dividerColor: Colors.transparent,
+              padding: EdgeInsets.zero,
               tabs: const [
                 Tab(text: 'Pending'),
                 Tab(text: 'All Companies'),

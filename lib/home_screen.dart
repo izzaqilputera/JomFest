@@ -200,15 +200,22 @@ class _DiscoverPageState extends State<_DiscoverPage> {
         // ── Category chips ──────────────────────
         SliverToBoxAdapter(child: _buildCategoryChips()),
 
-        // ── Featured section ────────────────────
-        SliverToBoxAdapter(
-          child: _SectionHeader(title: 'Featured', onTap: () {}),
-        ),
-        SliverToBoxAdapter(child: _buildFeaturedRow()),
+        // ── Featured section (only on "All") ────
+        if (_selectedCategory == 'All') ...[
+          SliverToBoxAdapter(
+            child: _SectionHeader(title: 'Featured', onTap: () {}),
+          ),
+          SliverToBoxAdapter(child: _buildFeaturedRow()),
+        ],
 
         // ── All Events ──────────────────────────
         SliverToBoxAdapter(
-          child: _SectionHeader(title: 'All Events', onTap: () {}),
+          child: _SectionHeader(
+            title: _selectedCategory == 'All'
+                ? 'All Events'
+                : _selectedCategory,
+            onTap: () {},
+          ),
         ),
         _buildAllEventsList(),
 
