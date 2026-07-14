@@ -1,5 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+DateTime? _parseDate(String? s) {
+  if (s == null || s.isEmpty || s == 'TBA') return null;
+  final parts = s.split('/');
+  if (parts.length == 3) {
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d != null && m != null && y != null) return DateTime(y, m, d);
+  }
+  return DateTime.tryParse(s);
+}
+
 class RecommendationService {
   static const List<String> categories = [
     'Music', 'Food & Drink', 'Arts & Culture', 'Sports',
@@ -13,9 +25,9 @@ class RecommendationService {
 
   static const Map<String, double> weights = {
     'view': 0.3,
-    'bookmark': 0.7,
+    'bookmark': 0.8,
     'search_click': 0.5,
-    'purchase': 1.5,
+    'purchase': 3.0, // purchase is the strongest intent signal
   };
 
   /// Build a 17-dim vector from category + type strings alone.
@@ -162,13 +174,20 @@ class RecommendationService {
           .where('status', isEqualTo: 'published')
           .get();
 
-      // 6. Score every event (skip already-purchased ones)
+      // 6. Score every event (skip purchased and past events)
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
       final scored = <Map<String, dynamic>>[];
       for (final doc in eventsSnap.docs) {
         final eventId = doc.id;
         if (purchasedIds.contains(eventId)) continue;
 
         final event = doc.data();
+
+        // Skip events that have already passed
+        final eventDate = _parseDate(event['startDate']?.toString());
+        if (eventDate != null && eventDate.isBefore(todayStart)) continue;
+
         final eventVec = _eventVector(event);
         final score = cosineSimilarity(userVector, eventVec);
 

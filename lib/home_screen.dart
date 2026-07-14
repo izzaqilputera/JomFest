@@ -11,6 +11,27 @@ import 'event_detail_screen.dart';
 import 'recommendation_service.dart';
 import 'theme.dart';
 import 'account_screens.dart';
+import 'ai_chat_widget.dart';
+
+// Returns null if the date string can't be parsed ("TBA", empty, etc.)
+DateTime? _parseEventDate(String? s) {
+  if (s == null || s.isEmpty || s == 'TBA') return null;
+  final parts = s.split('/');
+  if (parts.length == 3) {
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d != null && m != null && y != null) return DateTime(y, m, d);
+  }
+  return DateTime.tryParse(s);
+}
+
+bool _isEventPast(Map<String, dynamic> event) {
+  final date = _parseEventDate(event['startDate']?.toString());
+  if (date == null) return false; // unparseable → keep visible
+  final today = DateTime.now();
+  return date.isBefore(DateTime(today.year, today.month, today.day));
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,15 +48,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
-      body: IndexedStack(
-        index: _currentNavIndex,
+      body: Stack(
         children: [
-          const _DiscoverPage(),
-          _ForYouPage(reloadKey: _forYouReloadKey),
-          const _TicketsPage(),
-          const _AccountPage(),
+          IndexedStack(
+            index: _currentNavIndex,
+            children: [
+              const _DiscoverPage(),
+              _ForYouPage(reloadKey: _forYouReloadKey),
+              const _TicketsPage(),
+              const _AccountPage(),
+            ],
+          ),
+          // AI assistant chat bubble — only on the Home tab.
+          if (_currentNavIndex == 0) const FestivalChatBubble(),
         ],
       ),
       bottomNavigationBar: _BottomNavBar(
@@ -64,6 +92,7 @@ class _BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     const items = [
       _NavItem(icon: Icons.home_rounded, label: 'Home'),
       _NavItem(icon: Icons.stars_rounded, label: 'For You'),
@@ -73,7 +102,7 @@ class _BottomNavBar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
+        color: AppColors.scaffoldBg,
         border: Border(
           top: BorderSide(color: AppColors.divider, width: 1),
         ),
@@ -189,6 +218,7 @@ class _DiscoverPageState extends State<_DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return CustomScrollView(
       slivers: [
         // ── Header ──────────────────────────────
@@ -271,7 +301,7 @@ class _DiscoverPageState extends State<_DiscoverPage> {
               children: [
                 Text(
                   'Hello, $firstName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -305,7 +335,7 @@ class _DiscoverPageState extends State<_DiscoverPage> {
         controller: _searchController,
         onChanged: (val) =>
             setState(() => _searchQuery = val.toLowerCase()),
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+        style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Search events...',
           hintStyle:
@@ -323,7 +353,7 @@ class _DiscoverPageState extends State<_DiscoverPage> {
                 )
               : null,
           filled: true,
-          fillColor: const Color(0xFF1A1A1A),
+          fillColor: AppColors.surfaceCard,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
@@ -366,7 +396,7 @@ class _DiscoverPageState extends State<_DiscoverPage> {
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.primary
-                    : const Color(0xFF1A1A1A),
+                    : AppColors.surfaceCard,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
                   color: selected
@@ -412,12 +442,15 @@ class _DiscoverPageState extends State<_DiscoverPage> {
               child: Center(
                   child: CircularProgressIndicator(color: AppColors.primary)));
         }
-        final events = snapshot.data?.docs ?? [];
+        final allDocs = snapshot.data?.docs ?? [];
+        final events = allDocs.where((doc) {
+          return !_isEventPast(doc.data() as Map<String, dynamic>);
+        }).toList();
         if (events.isEmpty) {
           return const SizedBox(
               height: 220,
               child: Center(
-                  child: Text('No published events found.',
+                  child: Text('No upcoming events.',
                       style: TextStyle(color: AppColors.grey))));
         }
         return SizedBox(
@@ -469,7 +502,9 @@ class _DiscoverPageState extends State<_DiscoverPage> {
           );
         }
 
-        var events = snapshot.data?.docs ?? [];
+        var events = (snapshot.data?.docs ?? []).where((doc) {
+          return !_isEventPast(doc.data() as Map<String, dynamic>);
+        }).toList();
 
         if (_selectedCategory != 'All') {
           events = events
@@ -502,7 +537,7 @@ class _DiscoverPageState extends State<_DiscoverPage> {
                   Icon(Icons.search_off,
                       size: 52, color: AppColors.grey600),
                   const SizedBox(height: 12),
-                  const Text('No events found',
+                  Text('No events found',
                       style: TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
@@ -596,13 +631,14 @@ class _ForYouPageState extends State<_ForYouPage> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
               child: Text(
                 'For You',
@@ -620,7 +656,7 @@ class _ForYouPageState extends State<_ForYouPage> {
                     )
                   : RefreshIndicator(
                       color: AppColors.primary,
-                      backgroundColor: const Color(0xFF1A1A1A),
+                      backgroundColor: AppColors.surfaceCard,
                       onRefresh: () =>
                           _loadRecommendations(showFullScreenLoader: false),
                       child: _recommendations.isEmpty
@@ -634,7 +670,7 @@ class _ForYouPageState extends State<_ForYouPage> {
                                 Icon(Icons.stars_rounded,
                                     size: 60, color: AppColors.grey600),
                                 const SizedBox(height: 16),
-                                const Text(
+                                Text(
                                   'No recommendations yet',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
@@ -653,26 +689,68 @@ class _ForYouPageState extends State<_ForYouPage> {
                                 ),
                               ],
                             )
-                          : ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding:
-                                  const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                              itemCount: _recommendations.length,
-                              itemBuilder: (context, i) {
-                                final event = _recommendations[i];
-                                final eventId = event['eventId'] as String;
-                                final score = (event['similarityScore']
-                                        as double? ??
-                                    0.0);
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: _ForYouListCard(
-                                      event: event,
-                                      eventId: eventId,
-                                      score: score),
+                          : Builder(builder: (context) {
+                              final upcoming = _recommendations
+                                  .where((e) => !_isEventPast(e))
+                                  .toList();
+                              if (upcoming.isEmpty) {
+                                return ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                      20, 0, 20, 20),
+                                  children: [
+                                    SizedBox(
+                                        height:
+                                            MediaQuery.sizeOf(context).height *
+                                                0.22),
+                                    Icon(Icons.stars_rounded,
+                                        size: 60, color: AppColors.grey600),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No upcoming recommendations',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'All recommended events have passed. '
+                                      'View or bookmark new events to get '
+                                      'fresh suggestions.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: AppColors.grey),
+                                    ),
+                                  ],
                                 );
-                              },
-                            ),
+                              }
+                              return ListView.builder(
+                                physics:
+                                    const AlwaysScrollableScrollPhysics(),
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                itemCount: upcoming.length,
+                                itemBuilder: (context, i) {
+                                  final event = upcoming[i];
+                                  final eventId =
+                                      event['eventId'] as String;
+                                  final score = (event['similarityScore']
+                                          as double? ??
+                                      0.0);
+                                  return Padding(
+                                    padding:
+                                        const EdgeInsets.only(bottom: 10),
+                                    child: _ForYouListCard(
+                                        event: event,
+                                        eventId: eventId,
+                                        score: score),
+                                  );
+                                },
+                              );
+                            }),
                     ),
             ),
           ],
@@ -705,7 +783,7 @@ class _ForYouListCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: AppColors.surfaceCard,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.divider),
         ),
@@ -736,7 +814,7 @@ class _ForYouListCard extends StatelessWidget {
                       event['title'] ?? 'Untitled',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -821,7 +899,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
@@ -861,7 +939,7 @@ class _FeaturedCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 12, bottom: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: const Color(0xFF1A1A1A),
+          color: AppColors.surfaceCard,
         ),
         child: Stack(
           children: [
@@ -991,7 +1069,7 @@ class _RecommendedCard extends StatelessWidget {
         width: 180,
         margin: const EdgeInsets.only(right: 12, bottom: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: AppColors.surfaceCard,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
               color: AppColors.primary.withOpacity(0.3), width: 1),
@@ -1059,7 +1137,7 @@ class _RecommendedCard extends StatelessWidget {
                     event['title'] ?? 'Untitled',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
@@ -1109,7 +1187,7 @@ class _EventListCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: AppColors.surfaceCard,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.divider, width: 1),
         ),
@@ -1174,7 +1252,7 @@ class _EventListCard extends StatelessWidget {
                       event['title'] ?? 'Untitled',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -1283,6 +1361,7 @@ class _TicketsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context); // subscribe to theme changes so AppColors getters re-evaluate
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
@@ -1292,7 +1371,7 @@ class _TicketsPage extends StatelessWidget {
               backgroundColor: AppColors.scaffoldBg,
               foregroundColor: AppColors.textPrimary,
               elevation: 0,
-              title: const Text(
+              title: Text(
                 'My Tickets',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -1307,7 +1386,7 @@ class _TicketsPage extends StatelessWidget {
           children: [
             // Header
             if (!showBack)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(20, 24, 20, 20),
                 child: Text(
                   'My Tickets',
@@ -1354,7 +1433,7 @@ class _TicketsPage extends StatelessWidget {
                                   color: AppColors.grey600,
                                 ),
                                 const SizedBox(height: 16),
-                                const Text(
+                                Text(
                                   'No tickets yet',
                                   style: TextStyle(
                                     fontSize: 18,
@@ -1411,7 +1490,7 @@ class _TicketCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.divider),
       ),
@@ -1439,7 +1518,7 @@ class _TicketCard extends StatelessWidget {
                     children: [
                       Text(
                         ticket['eventTitle'] ?? 'Event',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -1522,7 +1601,7 @@ class _TicketCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'QR Code',
                             style: TextStyle(
                               fontSize: 12,
@@ -1575,7 +1654,7 @@ class _TicketInfo extends StatelessWidget {
                 fontSize: 10, color: AppColors.grey)),
         const SizedBox(height: 2),
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary)),
@@ -1590,6 +1669,7 @@ class _CircleCut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context); // subscribe to theme changes so AppColors getters re-evaluate
     return Container(
       width: 14,
       height: 14,
@@ -1647,6 +1727,75 @@ class _AccountPageState extends State<_AccountPage> {
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  void _showThemePicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceAlt,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.dialog)),
+      ),
+      builder: (sheetContext) {
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: ThemeController.mode,
+          builder: (context, current, _) {
+            Widget option(ThemeMode mode, IconData icon, String subtitle) {
+              final selected = current == mode;
+              return ListTile(
+                leading: Icon(icon,
+                    color: selected ? AppColors.primary : AppColors.grey),
+                title: Text(
+                  ThemeController.label(mode),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight:
+                        selected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(subtitle,
+                    style: const TextStyle(
+                        color: AppColors.grey, fontSize: 12)),
+                trailing: selected
+                    ? const Icon(Icons.check_circle_rounded,
+                        color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  ThemeController.set(mode);
+                  Navigator.pop(sheetContext);
+                },
+              );
+            }
+
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: Text('Appearance',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        )),
+                  ),
+                  option(ThemeMode.light, Icons.light_mode_outlined,
+                      'Always use the light theme'),
+                  option(ThemeMode.dark, Icons.dark_mode_outlined,
+                      'Always use the dark theme'),
+                  option(ThemeMode.system, Icons.brightness_auto_outlined,
+                      'Match your device setting'),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -1772,6 +1921,7 @@ class _AccountPageState extends State<_AccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
@@ -1817,7 +1967,7 @@ class _AccountPageState extends State<_AccountPage> {
                     const SizedBox(height: 14),
                     Text(
                       _userData?['name'] ?? 'User',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -1858,7 +2008,7 @@ class _AccountPageState extends State<_AccountPage> {
                     // Interests
                     if (_userData?['interests'] != null &&
                         (_userData!['interests'] as List).isNotEmpty) ...[
-                      const Align(
+                      Align(
                         alignment: Alignment.centerLeft,
                         child: Text('Interests',
                             style: TextStyle(
@@ -1919,6 +2069,18 @@ class _AccountPageState extends State<_AccountPage> {
                       },
                     ),
                     _AccountMenuItem(
+                      icon: Icons.history_rounded,
+                      label: 'Festival History',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FestivalHistoryScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _AccountMenuItem(
                       icon: Icons.notifications_outlined,
                       label: 'Notifications',
                       onTap: () {
@@ -1929,6 +2091,11 @@ class _AccountPageState extends State<_AccountPage> {
                           ),
                         );
                       },
+                    ),
+                    _AccountMenuItem(
+                      icon: Icons.brightness_6_outlined,
+                      label: 'Appearance',
+                      onTap: () => _showThemePicker(context),
                     ),
                     _AccountMenuItem(
                       icon: Icons.help_outline_rounded,
@@ -1994,7 +2161,7 @@ class _AccountMenuItem extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: AppColors.surfaceCard,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.divider),
         ),
@@ -2005,7 +2172,7 @@ class _AccountMenuItem extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w500,

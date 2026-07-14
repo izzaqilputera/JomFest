@@ -97,7 +97,7 @@ class SavedEventsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Saved Events',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -138,7 +138,7 @@ class SavedEventsScreen extends StatelessWidget {
                           Icon(Icons.favorite_outline_rounded,
                               size: 60, color: AppColors.grey600),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'No saved events yet',
                             style: TextStyle(
                               fontSize: 17,
@@ -205,7 +205,7 @@ class SavedEventsScreen extends StatelessWidget {
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF161616),
+                          color: AppColors.surfaceCard,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.divider),
                         ),
@@ -230,7 +230,7 @@ class SavedEventsScreen extends StatelessWidget {
                                     title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.textPrimary,
@@ -327,7 +327,7 @@ class NotificationsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Notifications',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -381,7 +381,7 @@ class NotificationsScreen extends StatelessWidget {
                               Icon(Icons.notifications_outlined,
                                   size: 60, color: AppColors.grey600),
                               const SizedBox(height: 16),
-                              const Text(
+                              Text(
                                 'No notifications',
                                 style: TextStyle(
                                   fontSize: 17,
@@ -445,7 +445,7 @@ class NotificationsScreen extends StatelessWidget {
                                 margin: const EdgeInsets.only(bottom: 10),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF161616),
+                                  color: AppColors.surfaceCard,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: AppColors.divider),
                                 ),
@@ -491,7 +491,7 @@ class NotificationsScreen extends StatelessWidget {
                                           const SizedBox(height: 3),
                                           Text(
                                             eventTitle,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                               color: AppColors.textPrimary,
@@ -604,7 +604,7 @@ class HelpTopicScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -622,7 +622,7 @@ class HelpTopicScreen extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF161616),
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.divider),
             ),
@@ -631,7 +631,7 @@ class HelpTopicScreen extends StatelessWidget {
               children: [
                 Text(
                   item.question,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -670,11 +670,11 @@ class HelpSupportScreen extends StatelessWidget {
         await Clipboard.setData(const ClipboardData(text: _kSupportEmail));
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
               'Could not open your email app. Support address copied to clipboard.',
             ),
-            backgroundColor: Color(0xFF2A2A2A),
+            backgroundColor: AppColors.divider,
           ),
         );
       }
@@ -683,11 +683,11 @@ class HelpSupportScreen extends StatelessWidget {
       await Clipboard.setData(const ClipboardData(text: _kSupportEmail));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
             'Could not open your email app. Support address copied to clipboard.',
           ),
-          backgroundColor: Color(0xFF2A2A2A),
+          backgroundColor: AppColors.divider,
         ),
       );
     }
@@ -699,7 +699,7 @@ class HelpSupportScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Copied $_kSupportEmail'),
-          backgroundColor: const Color(0xFF2A2A2A),
+          backgroundColor: AppColors.divider,
         ),
       );
     }
@@ -713,11 +713,11 @@ class HelpSupportScreen extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.surfaceAlt,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -747,7 +747,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Help & Support',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -761,7 +761,7 @@ class HelpSupportScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          const Text(
+          Text(
             'How can we help?',
             style: TextStyle(
               fontSize: 22,
@@ -778,14 +778,14 @@ class HelpSupportScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: const Color(0xFF161616),
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.divider),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.mail_outline_rounded,
                         color: AppColors.primary, size: 22),
@@ -859,7 +859,7 @@ class HelpSupportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Quick tips',
             style: TextStyle(
               fontSize: 15,
@@ -871,7 +871,7 @@ class HelpSupportScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF161616),
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.divider),
             ),
@@ -899,7 +899,7 @@ class HelpSupportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          const Text(
+          Text(
             'Common questions',
             style: TextStyle(
               fontSize: 15,
@@ -915,7 +915,7 @@ class HelpSupportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Browse by topic',
             style: TextStyle(
               fontSize: 15,
@@ -996,7 +996,7 @@ class _TipRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: AppColors.textPrimary,
               height: 1.4,
@@ -1017,7 +1017,7 @@ class _HelpFaqExpansion extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.divider),
       ),
@@ -1031,7 +1031,7 @@ class _HelpFaqExpansion extends StatelessWidget {
           collapsedIconColor: AppColors.grey,
           title: Text(
             qa.question,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -1074,7 +1074,7 @@ class _HelpCategoryTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.divider),
       ),
@@ -1090,7 +1090,7 @@ class _HelpCategoryTile extends StatelessWidget {
         leading: Icon(icon, color: AppColors.primary),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
             fontSize: 14,
@@ -1102,6 +1102,291 @@ class _HelpCategoryTile extends StatelessWidget {
         ),
         trailing:
             const Icon(Icons.chevron_right_rounded, color: AppColors.grey),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  FESTIVAL HISTORY SCREEN
+// ─────────────────────────────────────────────
+
+DateTime? _parseHistoryDate(String? s) {
+  if (s == null || s.isEmpty || s == 'TBA') return null;
+  final parts = s.split('/');
+  if (parts.length == 3) {
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d != null && m != null && y != null) return DateTime(y, m, d);
+  }
+  return DateTime.tryParse(s);
+}
+
+class FestivalHistoryScreen extends StatelessWidget {
+  const FestivalHistoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    Theme.of(context);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg,
+      appBar: AppBar(
+        title: Text(
+          'Festival History',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.scaffoldBg,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+      ),
+      body: uid == null
+          ? const Center(
+              child: Text('Please log in to view your history.',
+                  style: TextStyle(color: AppColors.grey)))
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('tickets')
+                  .where('userId', isEqualTo: uid)
+                  .where('status', isEqualTo: 'confirmed')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child:
+                        CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
+
+                final today = DateTime.now();
+                final todayStart =
+                    DateTime(today.year, today.month, today.day);
+
+                // Only tickets whose event date has passed
+                final pastTickets =
+                    (snapshot.data?.docs ?? []).where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final date = _parseHistoryDate(
+                      data['eventDate']?.toString());
+                  return date != null && date.isBefore(todayStart);
+                }).toList()
+                      ..sort((a, b) {
+                        final da = _parseHistoryDate(
+                            (a.data()
+                                as Map<String, dynamic>)['eventDate']
+                                ?.toString());
+                        final db = _parseHistoryDate(
+                            (b.data()
+                                as Map<String, dynamic>)['eventDate']
+                                ?.toString());
+                        if (da == null && db == null) return 0;
+                        if (da == null) return 1;
+                        if (db == null) return -1;
+                        return db.compareTo(da); // most recent first
+                      });
+
+                if (pastTickets.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.history_rounded,
+                              size: 64, color: AppColors.grey600),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No festival history yet',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Festivals you attended will appear here after they end.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  itemCount: pastTickets.length,
+                  itemBuilder: (context, index) {
+                    final ticket = pastTickets[index].data()
+                        as Map<String, dynamic>;
+                    return _HistoryTicketCard(ticket: ticket);
+                  },
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _HistoryTicketCard extends StatelessWidget {
+  final Map<String, dynamic> ticket;
+  const _HistoryTicketCard({required this.ticket});
+
+  Future<void> _openDetail(BuildContext context) async {
+    final eventId = ticket['eventId']?.toString() ?? '';
+    if (eventId.isEmpty) return;
+    final doc = await FirebaseFirestore.instance
+        .collection('events')
+        .doc(eventId)
+        .get();
+    if (!context.mounted) return;
+    if (doc.exists) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EventDetailScreen(
+            eventId: eventId,
+            event: doc.data() as Map<String, dynamic>,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Theme.of(context);
+    final title = ticket['eventTitle']?.toString() ?? 'Untitled Event';
+    final date = ticket['eventDate']?.toString() ?? '';
+    final tier = ticket['ticketTier']?.toString();
+    final amount = (ticket['amount'] as num?)?.toDouble() ?? 0;
+    final qty = (ticket['quantity'] as num?)?.toInt() ?? 1;
+
+    return GestureDetector(
+      onTap: () => _openDetail(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.grey600.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.festival_rounded,
+                    color: AppColors.grey600, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color:
+                                AppColors.grey600.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Attended',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.grey600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Tier + amount
+                    Row(
+                      children: [
+                        if (tier != null && tier.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySurface,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tier,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          amount == 0
+                              ? 'Free · $qty pax'
+                              : 'RM ${amount.toStringAsFixed(0)} · $qty pax',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (date.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined,
+                              size: 11, color: AppColors.grey),
+                          const SizedBox(width: 3),
+                          Text(date,
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.grey)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.grey, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

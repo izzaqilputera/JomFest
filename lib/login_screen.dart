@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.surfaceCard,
         title: const Text('Reset Password',
             style: TextStyle(color: Colors.white)),
         content: Column(
@@ -172,8 +172,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
           // ── Form panel pinned to the bottom ──
           Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A1A),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: SingleChildScrollView(
@@ -182,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Email field
-                  const Text(
+                  Text(
                     'Email',
                     style: TextStyle(
                       fontSize: 14,
@@ -215,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
 
                   // Password field
-                  const Text(
+                  Text(
                     'Password',
                     style: TextStyle(
                       fontSize: 14,

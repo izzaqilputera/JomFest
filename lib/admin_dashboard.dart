@@ -58,7 +58,7 @@ class _AdminNavBar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
+        color: AppColors.scaffoldBg,
         border: Border(top: BorderSide(color: AppColors.divider)),
       ),
       child: SafeArea(
@@ -190,7 +190,7 @@ class _OverviewPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Admin Dashboard',
                         style: TextStyle(
                           fontSize: 22,
@@ -239,7 +239,7 @@ class _OverviewPage extends StatelessWidget {
             const SizedBox(height: 28),
 
             // Stats grid
-            const Text(
+            Text(
               'Platform Stats',
               style: TextStyle(
                 fontSize: 15,
@@ -302,7 +302,7 @@ class _OverviewPage extends StatelessWidget {
             const SizedBox(height: 28),
 
             // Quick actions
-            const Text(
+            Text(
               'Quick Actions',
               style: TextStyle(
                 fontSize: 15,
@@ -327,7 +327,7 @@ class _OverviewPage extends StatelessWidget {
             const SizedBox(height: 28),
 
             // Recent activity
-            const Text(
+            Text(
               'Recent Events',
               style: TextStyle(
                 fontSize: 15,
@@ -385,7 +385,7 @@ class _StatCard extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF161616),
+            color: AppColors.surfaceCard,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.divider),
           ),
@@ -450,7 +450,7 @@ class _PendingStatCard extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF161616),
+            color: AppColors.surfaceCard,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: count > 0
@@ -511,7 +511,7 @@ class _RecentEventRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.divider),
       ),
@@ -536,7 +536,7 @@ class _RecentEventRow extends StatelessWidget {
                   event['title'] ?? 'Untitled',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -590,7 +590,7 @@ class _PendingEventsPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
             child: Row(
               children: [
-                const Text(
+                Text(
                   'Pending Events',
                   style: TextStyle(
                     fontSize: 22,
@@ -713,7 +713,7 @@ class _EventReviewCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
             color: Colors.orange.withOpacity(0.3), width: 1),
@@ -745,7 +745,7 @@ class _EventReviewCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   event['title'] ?? 'Untitled Event',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -756,7 +756,7 @@ class _EventReviewCard extends StatelessWidget {
           ),
 
           // Divider
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(
                 color: AppColors.dividerLight, height: 1),
@@ -843,7 +843,7 @@ class _EventReviewCard extends StatelessWidget {
           ),
 
           // Divider
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child:
                 Divider(color: AppColors.dividerLight, height: 1),
@@ -931,7 +931,7 @@ class _OrganizersPageState extends State<_OrganizersPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(20, 28, 20, 16),
             child: Text(
               'Organizers',
@@ -947,7 +947,7 @@ class _OrganizersPageState extends State<_OrganizersPage>
             margin: const EdgeInsets.symmetric(horizontal: 20),
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(10),
             ),
             child: TabBar(
@@ -1100,11 +1100,23 @@ class _OrganizerCard extends StatelessWidget {
           .collection('users')
           .doc(uid)
           .update({'organizerStatus': 'rejected'});
+
+      // Take down this organiser's festivals so they no longer
+      // appear on the public page.
+      final events = await FirebaseFirestore.instance
+          .collection('events')
+          .where('organizerUid', isEqualTo: uid)
+          .get();
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in events.docs) {
+        batch.update(doc.reference, {'status': 'unpublished'});
+      }
+      await batch.commit();
     }
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Organizer rejected.'),
+            content: Text('Organizer revoked and their festivals taken down.'),
             backgroundColor: AppColors.error),
       );
     }
@@ -1122,7 +1134,7 @@ class _OrganizerCard extends StatelessWidget {
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.card)),
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.surfaceCard,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1130,7 +1142,7 @@ class _OrganizerCard extends StatelessWidget {
               padding: AppSpacing.cardPadding,
               child: Row(
                 children: [
-                  const Text('IC / Document',
+                  Text('IC / Document',
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -1186,7 +1198,7 @@ class _OrganizerCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isVerified
@@ -1219,7 +1231,7 @@ class _OrganizerCard extends StatelessWidget {
                     children: [
                       Text(
                         org['companyName'] ?? 'Unknown',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -1255,7 +1267,7 @@ class _OrganizerCard extends StatelessWidget {
               ],
             ),
 
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Divider(
                   color: AppColors.dividerLight, height: 1),
@@ -1437,7 +1449,7 @@ class _DetailRow extends StatelessWidget {
         ),
         Expanded(
           child: Text(value,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w500)),
@@ -1469,7 +1481,7 @@ class _EmptyState extends StatelessWidget {
               size: 60, color: iconColor ?? AppColors.grey600),
           const SizedBox(height: 16),
           Text(message,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary)),
@@ -1508,7 +1520,7 @@ class _AdminQuickAction extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: AppColors.surfaceCard,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.divider),
         ),
@@ -1530,7 +1542,7 @@ class _AdminQuickAction extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
@@ -1643,7 +1655,7 @@ class _ManageEventImagesScreenState extends State<ManageEventImagesScreen> {
         backgroundColor: AppColors.scaffoldBg,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Manage Event Images',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -1659,14 +1671,14 @@ class _ManageEventImagesScreenState extends State<ManageEventImagesScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               child: TextField(
                 onChanged: (v) => setState(() => _search = v.toLowerCase()),
-                style: const TextStyle(color: AppColors.textPrimary),
+                style: TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search events…',
                   hintStyle: const TextStyle(color: AppColors.grey),
                   prefixIcon: const Icon(Icons.search_rounded,
                       color: AppColors.grey),
                   filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
+                  fillColor: AppColors.surfaceCard,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
@@ -1791,7 +1803,7 @@ class _ManageEventImageRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.divider),
       ),
@@ -1833,7 +1845,7 @@ class _ManageEventImageRow extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,

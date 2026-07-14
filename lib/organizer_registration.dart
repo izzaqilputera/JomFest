@@ -164,11 +164,13 @@ class _OrganizerRegistrationScreenState
         backgroundColor: AppColors.scaffoldBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
+          icon: Icon(Icons.arrow_back_ios,
               color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            await FirebaseAuth.instance.signOut();
+          },
         ),
-        title: const Text(
+        title: Text(
           'Organizer Application',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -384,7 +386,7 @@ class _OrganizerRegistrationScreenState
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'payment_screen.dart';
 import 'theme.dart';
@@ -8,6 +9,19 @@ import 'theme.dart';
 /// Formats a price for display (2000.0 -> "2000", 1500.5 -> "1500.5").
 String _formatTierPrice(double p) =>
     p == p.roundToDouble() ? p.toInt().toString() : p.toString();
+
+/// Parses "d/M/yyyy" strings (e.g. "26/6/2026") and ISO 8601.
+DateTime? _parseEventDate(String? s) {
+  if (s == null || s.isEmpty || s == 'TBA') return null;
+  final parts = s.split('/');
+  if (parts.length == 3) {
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d != null && m != null && y != null) return DateTime(y, m, d);
+  }
+  return DateTime.tryParse(s);
+}
 
 /// Reads the ticket tiers from an event map, falling back to the legacy
 /// single `ticketPrice` field for older events without `ticketTiers`.
@@ -204,6 +218,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final hasMultipleTiers = tiers.length > 1;
     final keywords = event['keywords'] as List<dynamic>? ?? [];
 
+    final eventDate = _parseEventDate(event['startDate']?.toString());
+    final now = DateTime.now();
+    final isEventPast = eventDate != null &&
+        eventDate.isBefore(DateTime(now.year, now.month, now.day));
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: CustomScrollView(
@@ -278,13 +297,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   // Title
                   Text(
                     event['title'] ?? 'Untitled Event',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  // Countdown timer
+                  _EventCountdown(startDate: event['startDate']?.toString()),
+
+                  const SizedBox(height: 16),
 
                   // Info card
                   _buildInfoCard([
@@ -311,7 +335,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
                   // Ticket categories selector (only when more than one tier)
                   if (hasMultipleTiers) ...[
-                    const Text(
+                    Text(
                       'Select Ticket Category',
                       style: TextStyle(
                         fontSize: 16,
@@ -360,7 +384,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               Expanded(
                                 child: Text(
                                   tier['name'] as String,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textPrimary,
@@ -392,7 +416,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       event['description']
                           .toString()
                           .isNotEmpty) ...[
-                    const Text(
+                    Text(
                       'About this event',
                       style: TextStyle(
                         fontSize: 16,
@@ -414,7 +438,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
                   // Keywords/Tags
                   if (keywords.isNotEmpty) ...[
-                    const Text(
+                    Text(
                       'Tags',
                       style: TextStyle(
                         fontSize: 16,
@@ -504,33 +528,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               child: SizedBox(
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PaymentScreen(
-                          eventId: widget.eventId,
-                          event: widget.event,
-                          amount: selectedPrice,
-                          tierName: hasMultipleTiers
-                              ? selectedTier['name'] as String
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: isEventPast
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PaymentScreen(
+                                eventId: widget.eventId,
+                                event: widget.event,
+                                amount: selectedPrice,
+                                tierName: hasMultipleTiers
+                                    ? selectedTier['name'] as String
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.white,
+                    disabledBackgroundColor: AppColors.grey600,
+                    disabledForegroundColor: AppColors.grey300,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 0,
                   ),
                   child: Text(
-                    selectedPrice == 0
-                        ? 'Get Free Ticket'
-                        : 'Buy Ticket',
+                    isEventPast
+                        ? 'Event Ended'
+                        : selectedPrice == 0
+                            ? 'Get Free Ticket'
+                            : 'Buy Ticket',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -580,7 +610,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -588,6 +618,219 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  EVENT COUNTDOWN  (flip-clock style)
+// ─────────────────────────────────────────────
+
+class _EventCountdown extends StatefulWidget {
+  final String? startDate;
+  const _EventCountdown({required this.startDate});
+
+  @override
+  State<_EventCountdown> createState() => _EventCountdownState();
+}
+
+class _EventCountdownState extends State<_EventCountdown> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// Parses "d/M/yyyy" strings (e.g. "26/6/2026") and ISO 8601.
+  DateTime? _parse(String? s) {
+    if (s == null || s.isEmpty || s == 'TBA') return null;
+    final parts = s.split('/');
+    if (parts.length == 3) {
+      final d = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      final y = int.tryParse(parts[2]);
+      if (d != null && m != null && y != null) return DateTime(y, m, d);
+    }
+    return DateTime.tryParse(s);
+  }
+
+  String _statusText(Duration diff) {
+    final days = diff.inDays;
+    final hours = diff.inHours.remainder(24);
+    final mins = diff.inMinutes.remainder(60);
+    if (days > 0) {
+      return 'Starts in $days day${days == 1 ? '' : 's'} $hours hr${hours == 1 ? '' : 's'}';
+    }
+    if (hours > 0) {
+      return 'Starts in $hours hr${hours == 1 ? '' : 's'} $mins min';
+    }
+    if (mins > 0) return 'Starts in $mins min';
+    return 'Starting soon!';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Theme.of(context); // subscribe to theme changes
+    final eventDate = _parse(widget.startDate);
+    if (eventDate == null) return const SizedBox.shrink();
+
+    final diff = eventDate.difference(DateTime.now());
+
+    if (diff.isNegative) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_available_rounded,
+              size: 14, color: AppColors.grey),
+          const SizedBox(width: 6),
+          Text(
+            'This event has passed',
+            style: TextStyle(fontSize: 12, color: AppColors.grey),
+          ),
+        ],
+      );
+    }
+
+    final days = diff.inDays.clamp(0, 99);
+    final hours = diff.inHours.remainder(24).clamp(0, 99);
+    final minutes = diff.inMinutes.remainder(60).clamp(0, 99);
+    final seconds = diff.inSeconds.remainder(60).clamp(0, 99);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.timer_outlined,
+                color: AppColors.primary, size: 14),
+            const SizedBox(width: 6),
+            Text(
+              'COUNTDOWN',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.grey,
+                letterSpacing: 1.8,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              _statusText(diff),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _tileGroup(days, 'DAYS'),
+              _colon(),
+              _tileGroup(hours, 'HRS'),
+              _colon(),
+              _tileGroup(minutes, 'MIN'),
+              _colon(),
+              _tileGroup(seconds, 'SEC'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tileGroup(int value, String label) {
+    final s = value.toString().padLeft(2, '0');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _tile(s[0]),
+            const SizedBox(width: 3),
+            _tile(s[1]),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            color: AppColors.grey,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tile(String char) {
+    return Container(
+      width: 30,
+      height: 38,
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              char,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+                height: 1.0,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 19,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: AppColors.divider),
+              child: const SizedBox(height: 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _colon() {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(5, 0, 5, 14),
+      child: Text(
+        ':',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
+        ),
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ void main() async {
       storageBucket: "jomfestt.firebasestorage.app",
     ),
   );
+  await ThemeController.load();
   runApp(const JomFestApp());
 }
 
@@ -21,13 +22,25 @@ class JomFestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'JomFest',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
-      home: const AuthGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.mode,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'JomFest',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: mode,
+          builder: (context, child) {
+            // Keep the dynamic AppColors tokens in sync with the
+            // active theme before the rest of the tree builds.
+            AppColors.isDark =
+                Theme.of(context).brightness == Brightness.dark;
+            return child ?? const SizedBox.shrink();
+          },
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }

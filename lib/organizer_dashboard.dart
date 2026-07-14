@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'theme.dart';
+import 'analytics_screen.dart';
 
 bool _posterPickerInProgress = false;
 const double _posterAspectRatio = 16 / 9;
@@ -305,7 +306,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'My Events',
                           style: TextStyle(
                             fontSize: 22,
@@ -324,6 +325,37 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       ],
                     ),
                   ),
+                  Material(
+                    color: AppColors.primarySurface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: AppColors.primary.withOpacity(0.35),
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                OrganizerAnalyticsScreen(organizerUid: uid),
+                          ),
+                        );
+                      },
+                      child: const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Icon(
+                          Icons.bar_chart_rounded,
+                          color: AppColors.primary,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Material(
                     color: AppColors.primarySurface,
                     shape: RoundedRectangleBorder(
@@ -407,7 +439,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                             Icon(Icons.festival_outlined,
                                 size: 60, color: AppColors.grey600),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               'No events yet',
                               style: TextStyle(
                                 fontSize: 17,
@@ -504,7 +536,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                     Expanded(
                       child: Text(
                         event['title'] ?? 'Untitled',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -941,11 +973,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         backgroundColor: AppColors.scaffoldBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
+          icon: Icon(Icons.arrow_back_ios,
               color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Create Event',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -990,7 +1022,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               Icon(Icons.add_photo_alternate_outlined,
                                   size: 50, color: AppColors.primary),
                               const SizedBox(height: 12),
-                              const Text(
+                              Text(
                                 'Add Event Poster',
                                 style: TextStyle(
                                   fontSize: 14,
@@ -1328,7 +1360,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
@@ -1625,11 +1657,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
         backgroundColor: AppColors.scaffoldBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
+          icon: Icon(Icons.arrow_back_ios,
               color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Edit Event',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -2005,7 +2037,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
           Icon(Icons.add_photo_alternate_outlined,
               size: 50, color: AppColors.primary),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Add Event Poster',
             style: TextStyle(
               fontSize: 14,
@@ -2050,7 +2082,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,

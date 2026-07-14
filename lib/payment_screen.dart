@@ -205,7 +205,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         // null = no transaction record yet (user hasn't paid or just opened browser)
         _showSnack(
           'No payment found yet. Complete the payment in the browser then tap Verify.',
-          color: const Color(0xFF2A2A2A),
+          color: AppColors.divider,
         );
       }
     } catch (e) {
@@ -398,7 +398,7 @@ class _PaymentScreenState extends State<PaymentScreen>
               backgroundColor: AppColors.scaffoldBg,
               elevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios,
+                icon: Icon(Icons.arrow_back_ios,
                     color: AppColors.textPrimary),
                 onPressed: () {
                   if (_currentStep == 0) {
@@ -409,7 +409,7 @@ class _PaymentScreenState extends State<PaymentScreen>
               ),
               title: Text(
                 _currentStep == 0 ? 'Confirm Payment' : 'Processing...',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.bold,
                 ),
@@ -452,7 +452,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Order Summary',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -480,7 +480,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         children: [
                           Text(
                             widget.event['title'] ?? '',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: AppColors.textPrimary,
@@ -529,7 +529,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total Amount',
+                    Text('Total Amount',
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary)),
@@ -653,7 +653,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             Icon(Icons.open_in_new_rounded,
                 size: 64, color: AppColors.primary.withOpacity(0.9)),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Complete Payment in Browser',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -777,7 +777,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                   color: AppColors.success, size: 60),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Payment Successful!',
               style: TextStyle(
                 fontSize: 24,
@@ -880,7 +880,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                 const TextStyle(fontSize: 13, color: AppColors.grey600)),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
