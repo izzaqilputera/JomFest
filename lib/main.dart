@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'auth_gate.dart';
+import 'payment_resume_watcher.dart';
 import 'theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,7 @@ class JomFestApp extends StatelessWidget {
         return MaterialApp(
           title: 'JomFest',
           debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: _messengerKey,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: mode,
@@ -36,7 +38,12 @@ class JomFestApp extends StatelessWidget {
             // active theme before the rest of the tree builds.
             AppColors.isDark =
                 Theme.of(context).brightness == Brightness.dark;
-            return child ?? const SizedBox.shrink();
+            // Finalize any payment left in-flight by process death during
+            // the external checkout, no matter which screen we land on.
+            return PaymentResumeWatcher(
+              messengerKey: _messengerKey,
+              child: child ?? const SizedBox.shrink(),
+            );
           },
           home: const AuthGate(),
         );
@@ -44,6 +51,9 @@ class JomFestApp extends StatelessWidget {
     );
   }
 }
+
+final GlobalKey<ScaffoldMessengerState> _messengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});

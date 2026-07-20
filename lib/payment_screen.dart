@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:convert';
-import 'dart:math';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'payment_service.dart';
 import 'theme.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -27,44 +25,17 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen>
     with WidgetsBindingObserver {
-  // ── ToyyibPay sandbox credentials ──────────────────────────────────────────
-  static const String _toyyibpayUserSecretKey =
-      'q25txb68-ks2n-hohr-kbqp-fbvr4f4930yc';
-  static const String _toyyibpayCategoryCode = '6vg6v19v';
-  static const String _toyyibpayBaseUrl = 'https://dev.toyyibpay.com';
-  // ───────────────────────────────────────────────────────────────────────────
+  static const String _toyyibpayBaseUrl = PaymentService.toyyibpayBaseUrl;
 
   // Steps: 0 = order summary + confirm, 1 = processing/verify, 2 = success
   int _currentStep = 0;
   bool _isProcessing = false;
   bool _verifying = false;
-  String? _paymentId;
   String? _billCode;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  String _generateQrData({
-    required String uid,
-    required String eventId,
-    required String ticketId,
-  }) {
-    final rnd = Random.secure();
-    final nonce = List<int>.generate(16, (_) => rnd.nextInt(256));
-    final nonceB64 = base64UrlEncode(nonce).replaceAll('=', '');
-    final ts = DateTime.now().toUtc().toIso8601String();
-    return 'JOMFEST|$uid|$eventId|$ticketId|$ts|$nonceB64';
-  }
-
-  int _amountToCents(double amount) => (amount * 100).round();
-
-  String _sanitizeToyyibField(String value, {int maxLength = 60}) {
-    final cleaned = value
-        .replaceAll(RegExp(r'[^a-zA-Z0-9 @._\-]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (cleaned.isEmpty) return '';
-    return cleaned.length > maxLength ? cleaned.substring(0, maxLength) : cleaned;
-  }
+  // Everything needed to finalize the ticket, persisted to SharedPreferences
+  // so it survives process death during the external checkout.
+  Map<String, dynamic>? _pending;
 
   // ── App lifecycle: auto-verify when user returns from browser ──────────────
 
@@ -89,198 +60,76 @@ class _PaymentScreenState extends State<PaymentScreen>
 
   Future<void> _maybeVerifyOnReturn() async {
     if (!mounted) return;
-    if (_billCode == null || _paymentId == null) return;
+    if (_pending == null) return;
     if (_currentStep != 1) return; // only on the processing/verify step
     if (_verifying) return;
     await _verifyToyyibPayStatus();
   }
 
-  // ── ToyyibPay API calls ────────────────────────────────────────────────────
-
-  Future<String> _createToyyibPayBill({
-    required String externalRef,
-    required int amountInCents,
-    required String payerName,
-    required String payerEmail,
-    required String payerPhone,
-  }) async {
-    final uri = Uri.parse('$_toyyibpayBaseUrl/index.php/api/createBill');
-
-    final rawTitle = _sanitizeToyyibField(
-      (widget.event['title'] ?? 'JomFest Ticket').toString(),
-      maxLength: 60,
-    );
-    final billName = rawTitle.isEmpty
-        ? 'JomFest Ticket'
-        : (rawTitle.length > 30 ? rawTitle.substring(0, 30) : rawTitle);
-    final safePayerName = _sanitizeToyyibField(payerName, maxLength: 60);
-    final safePayerEmail = _sanitizeToyyibField(payerEmail, maxLength: 80);
-    final safePayerPhone = _sanitizeToyyibField(payerPhone, maxLength: 20);
-
-    final resp = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: <String, String>{
-        'userSecretKey': _toyyibpayUserSecretKey,
-        'categoryCode': _toyyibpayCategoryCode,
-        'billName': billName,
-        'billDescription': 'Ticket purchase for JomFest',
-        'billPriceSetting': '1',
-        'billPayorInfo': '1',
-        'billAmount': amountInCents.toString(),
-        'billExternalReferenceNo': externalRef,
-        'billTo': safePayerName.isEmpty ? 'JomFest User' : safePayerName,
-        'billEmail': safePayerEmail.isEmpty
-            ? 'demo@jomfest.local'
-            : safePayerEmail,
-        'billPhone': safePayerPhone.isEmpty ? '0123456789' : safePayerPhone,
-        // '0' = all channels (FPX + card + e-wallet), '1' = FPX only, '2' = card only
-        'billPaymentChannel': '0',
-      },
-    );
-
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw Exception('ToyyibPay createBill failed (${resp.statusCode})');
-    }
-
-    final decoded = jsonDecode(resp.body);
-    if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
-      final billCode =
-          (decoded.first['BillCode'] ?? decoded.first['billCode'])?.toString();
-      if (billCode != null && billCode.isNotEmpty) return billCode;
-    }
-    throw Exception('ToyyibPay returned unexpected response: ${resp.body}');
-  }
-
-  Future<int?> _getToyyibPayPaymentStatus(String billCode) async {
-    final uri =
-        Uri.parse('$_toyyibpayBaseUrl/index.php/api/getBillTransactions');
-    final resp = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {
-        'userSecretKey': _toyyibpayUserSecretKey,
-        'billCode': billCode,
-      },
-    );
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw Exception(
-          'ToyyibPay getBillTransactions failed (${resp.statusCode})');
-    }
-    final decoded = jsonDecode(resp.body);
-    if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
-      final statusStr = decoded.first['billpaymentStatus']?.toString() ??
-          decoded.first['billPaymentStatus']?.toString();
-      return int.tryParse(statusStr ?? '');
-    }
-    return null; // no transaction record yet
+  /// Builds the map that fully describes this purchase for finalization.
+  Map<String, dynamic> _buildPending({
+    required String paymentId,
+    required String uid,
+    String? billCode,
+    required bool isFree,
+  }) {
+    return {
+      'paymentId': paymentId,
+      'billCode': billCode,
+      'uid': uid,
+      'eventId': widget.eventId,
+      'amount': widget.amount,
+      'tierName': widget.tierName,
+      'eventTitle': widget.event['title'],
+      'eventDate': widget.event['startDate'],
+      'venue': widget.event['venue'] ?? widget.event['location'],
+      'organizerName': widget.event['organizerName'],
+      'category': widget.event['category'],
+      'featureVector': widget.event['featureVector'],
+      'isFree': isFree,
+    };
   }
 
   // ── Verify payment status ──────────────────────────────────────────────────
 
   Future<void> _verifyToyyibPayStatus() async {
-    if (_billCode == null || _paymentId == null) return;
+    final pending = _pending;
+    if (pending == null) return;
     setState(() => _verifying = true);
 
     try {
-      final status = await _getToyyibPayPaymentStatus(_billCode!);
+      final result = await PaymentService.verifyAndFinalize(pending);
 
-      // ToyyibPay status codes: 1 = success, 2 = pending, 3 = failed
-      if (status == 1) {
-        await _finalizeSuccessfulPayment();
-      } else if (status == 2) {
-        _showSnack('Payment is pending. Please wait a moment and try again.',
-            color: Colors.orange);
-      } else if (status == 3) {
-        await FirebaseFirestore.instance
-            .collection('payments')
-            .doc(_paymentId)
-            .update({'status': 'failed'});
-        if (mounted) {
-          setState(() => _currentStep = 0);
-          _showSnack('Payment failed. Please try again.',
+      switch (result) {
+        case PaymentVerifyResult.paid:
+          await PaymentService.clearPending();
+          if (mounted) setState(() => _currentStep = 2); // success screen
+          break;
+        case PaymentVerifyResult.pending:
+          _showSnack('Payment is pending. Please wait a moment and try again.',
+              color: Colors.orange);
+          break;
+        case PaymentVerifyResult.failed:
+          await PaymentService.clearPending();
+          if (mounted) {
+            setState(() => _currentStep = 0);
+            _showSnack('Payment failed. Please try again.',
+                color: AppColors.error);
+          }
+          break;
+        case PaymentVerifyResult.none:
+          _showSnack(
+            'No payment found yet. Complete the payment in the browser then tap Verify.',
+            color: AppColors.divider,
+          );
+          break;
+        case PaymentVerifyResult.error:
+          _showSnack('Verification error. Please check your connection and try again.',
               color: AppColors.error);
-        }
-      } else {
-        // null = no transaction record yet (user hasn't paid or just opened browser)
-        _showSnack(
-          'No payment found yet. Complete the payment in the browser then tap Verify.',
-          color: AppColors.divider,
-        );
+          break;
       }
-    } catch (e) {
-      _showSnack('Verification error: $e', color: AppColors.error);
     } finally {
       if (mounted) setState(() => _verifying = false);
-    }
-  }
-
-  // ── Finalize: write ticket to Firestore ────────────────────────────────────
-
-  Future<void> _finalizeSuccessfulPayment() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final paymentId = _paymentId!;
-
-    await FirebaseFirestore.instance.runTransaction((txn) async {
-      final paymentRef =
-          FirebaseFirestore.instance.collection('payments').doc(paymentId);
-      final paymentSnap = await txn.get(paymentRef);
-      final payment = paymentSnap.data() as Map<String, dynamic>? ?? {};
-
-      // Idempotency guard: don't create duplicate tickets
-      if (payment['status'] == 'paid' && payment['ticketCreated'] == true) {
-        return;
-      }
-
-      final ticketRef =
-          FirebaseFirestore.instance.collection('tickets').doc(paymentId);
-      final qrData = _generateQrData(
-        uid: uid,
-        eventId: widget.eventId,
-        ticketId: ticketRef.id,
-      );
-
-      txn.set(ticketRef, {
-        'ticketId': ticketRef.id,
-        'userId': uid,
-        'uid': uid,
-        'eventId': widget.eventId,
-        'eventTitle': widget.event['title'],
-        'eventDate': widget.event['startDate'],
-        'venue': widget.event['venue'] ?? widget.event['location'],
-        'organizerName': widget.event['organizerName'],
-        'ticketTier': widget.tierName,
-        'quantity': 1,
-        'amount': widget.amount,
-        'price': widget.amount,
-        'paymentMethod': 'ToyyibPay (Sandbox)',
-        'qrData': qrData,
-        'qrVersion': 1,
-        'purchasedAt': FieldValue.serverTimestamp(),
-        'status': 'confirmed',
-        'paymentId': paymentId,
-        'billCode': _billCode,
-      });
-
-      txn.update(paymentRef, {
-        'status': 'paid',
-        'paidAt': FieldValue.serverTimestamp(),
-        'ticketCreated': true,
-      });
-    });
-
-    // Log purchase interaction for recommendation engine (CBF)
-    await FirebaseFirestore.instance.collection('interactions').add({
-      'uid': uid,
-      'eventId': widget.eventId,
-      'type': 'purchase',
-      'category': widget.event['category'],
-      'featureVector': widget.event['featureVector'],
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    if (mounted) {
-      setState(() => _currentStep = 2); // success screen
     }
   }
 
@@ -296,7 +145,6 @@ class _PaymentScreenState extends State<PaymentScreen>
       // 1. Create pending payment record in Firestore
       final paymentRef =
           FirebaseFirestore.instance.collection('payments').doc();
-      _paymentId = paymentRef.id;
 
       await paymentRef.set({
         'paymentId': paymentRef.id,
@@ -320,10 +168,16 @@ class _PaymentScreenState extends State<PaymentScreen>
           'paidAt': FieldValue.serverTimestamp(),
           'ticketCreated': false,
         });
+        _pending = _buildPending(
+          paymentId: paymentRef.id,
+          uid: uid,
+          billCode: null,
+          isFree: true,
+        );
         if (mounted) {
           setState(() => _currentStep = 1);
         }
-        await _finalizeSuccessfulPayment();
+        await _verifyToyyibPayStatus();
         if (mounted) {
           setState(() => _isProcessing = false);
         }
@@ -339,12 +193,23 @@ class _PaymentScreenState extends State<PaymentScreen>
       const payerPhone = '0123456789'; // ToyyibPay requires a phone number
 
       // 3. Call ToyyibPay createBill
-      final billCode = await _createToyyibPayBill(
+      final rawTitle = PaymentService.sanitizeToyyibField(
+        (widget.event['title'] ?? 'JomFest Ticket').toString(),
+        maxLength: 60,
+      );
+      final billName = rawTitle.isEmpty
+          ? 'JomFest Ticket'
+          : (rawTitle.length > 30 ? rawTitle.substring(0, 30) : rawTitle);
+
+      final billCode = await PaymentService.createBill(
         externalRef: paymentRef.id,
-        amountInCents: _amountToCents(widget.amount),
-        payerName: payerName,
-        payerEmail: payerEmail,
-        payerPhone: payerPhone,
+        amountInCents: PaymentService.amountToCents(widget.amount),
+        billName: billName,
+        payerName: PaymentService.sanitizeToyyibField(payerName, maxLength: 60),
+        payerEmail:
+            PaymentService.sanitizeToyyibField(payerEmail, maxLength: 80),
+        payerPhone:
+            PaymentService.sanitizeToyyibField(payerPhone, maxLength: 20),
       );
 
       _billCode = billCode;
@@ -355,6 +220,17 @@ class _PaymentScreenState extends State<PaymentScreen>
         'billCode': billCode,
         'checkoutUrl': '$_toyyibpayBaseUrl/$billCode',
       });
+
+      // 4b. Persist pending payment BEFORE leaving the app, so the ticket can
+      // still be finalized on next launch even if Android kills this process
+      // while the user is in the external browser.
+      _pending = _buildPending(
+        paymentId: paymentRef.id,
+        uid: uid,
+        billCode: billCode,
+        isFree: false,
+      );
+      await PaymentService.savePending(_pending!);
 
       // 5. Open ToyyibPay checkout in external browser
       final checkoutUri = Uri.parse('$_toyyibpayBaseUrl/$billCode');
